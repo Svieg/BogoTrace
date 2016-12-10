@@ -1,5 +1,13 @@
 # BogoTrace
-An non-optimized tracer that works everywhere Pin can go.
+An non-optimized tracer that works everywhere Pin can go. Based on the itrace.cpp manual example.
+
+## How to get schwifty
+
+- Download Pin on Intel's website
+- Put the `itrace.cpp` file in pin-3.0-76991-gcc-linux/source/tools/ManualExamples/ to replace the default itrace.cpp
+- run `make PIN_ROOT=../../.. CXX="g++ -std=c++0x"` from the ManualExamples directory.
+- Run `<path to pin>/pin -t <path to ManualExamples>/obj-intel64/itrace.so -- <binary to trace>`
+- Output is in itrace.out
 
 ## Output
 
