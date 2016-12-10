@@ -40,7 +40,7 @@ std::ofstream TRACE_FILE;
 std::vector<string> REG_VECTOR;
 
 
-// Imprime l'instruction desassemblee et les registres generaux.
+// Print disas'ed instruction and context.
 VOID print_context_instruction(const CONTEXT* ctxt, std::string disassembled_instr, UINT64 ip) {
         for (int i = 3; i < 11; i++) {
             REG reg = REG(i);
@@ -53,7 +53,7 @@ VOID print_context_instruction(const CONTEXT* ctxt, std::string disassembled_ins
 }
 
 
-// Imprime la valeur du registre EAX lors d'un ret.
+// Prints eax value on ret.
 VOID print_ret(INT32 eax) {
 
     TRACE_FILE << "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++" << std::endl;
@@ -62,7 +62,7 @@ VOID print_ret(INT32 eax) {
 
 }
 
-// Imprime la valeur, la longueur et la destination d'une ecriture en memoire.
+// Prints value, address and length of memory writes.
 VOID print_mem_write(UINT64* write_addr, UINT32 write_len) {
 
     TRACE_FILE << "**********************************************************" << std::endl;
@@ -72,7 +72,7 @@ VOID print_mem_write(UINT64* write_addr, UINT32 write_len) {
 
 }
 
-// Imprime la valeur, la longueur et la source d'une lecture en memoire.
+// Prints value, address and length of memory reads.
 VOID print_mem_read(UINT64* read_addr, UINT32 read_len) {
 
     TRACE_FILE << "**********************************************************" << std::endl;
@@ -82,6 +82,7 @@ VOID print_mem_read(UINT64* read_addr, UINT32 read_len) {
 
 }
 
+// Prints the value of the first four call args.
 VOID print_call_args(UINT64* arg_0, UINT64* arg_1, UINT64* arg_2, UINT64* arg_3) {
     //int i = 0;
     TRACE_FILE << "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX" << std::endl;
@@ -125,7 +126,27 @@ VOID Instruction(INS ins, VOID *v)
                         IARG_END);
     }
 
-    if (INS_IsMemoryWrite(ins) and !INS_IsStackWrite(ins)) {
+    else if (INS_IsCall(ins)) {
+
+        INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)print_call_args,
+                        IARG_FUNCARG_CALLSITE_VALUE, 0,
+                        IARG_FUNCARG_CALLSITE_VALUE, 1,
+                        IARG_FUNCARG_CALLSITE_VALUE, 2,
+                        IARG_FUNCARG_CALLSITE_VALUE, 3,
+                        IARG_END);
+
+    }
+
+    else if (INS_IsBranch(ins)) {
+
+        INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)print_jmp_eflags,
+                        IARG_REG_VALUE, REG_RFLAGS,
+                        IARG_END);
+
+    }
+
+
+    else if (INS_IsMemoryWrite(ins) and !INS_IsStackWrite(ins)) {
         UINT32 mem_op_count = INS_MemoryOperandCount(ins);
         UINT32 write_len = INS_MemoryWriteSize(ins);
         for (UINT32 i = 0; i < mem_op_count; i++) {
@@ -138,7 +159,7 @@ VOID Instruction(INS ins, VOID *v)
         }
     }
 
-    if (INS_IsMemoryRead(ins) and !INS_IsStackRead(ins)) {
+    else if (INS_IsMemoryRead(ins) and !INS_IsStackRead(ins)) {
         UINT32 mem_op_count = INS_MemoryOperandCount(ins);
         UINT32 read_len = INS_MemoryReadSize(ins);
         for (UINT32 i = 0; i < mem_op_count; i++) {
@@ -149,25 +170,6 @@ VOID Instruction(INS ins, VOID *v)
                                 IARG_END);
             }
         }
-    }
-
-    if (INS_IsCall(ins)) {
-
-        INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)print_call_args,
-                        IARG_FUNCARG_CALLSITE_VALUE, 0,
-                        IARG_FUNCARG_CALLSITE_VALUE, 1,
-                        IARG_FUNCARG_CALLSITE_VALUE, 2,
-                        IARG_FUNCARG_CALLSITE_VALUE, 3,
-                        IARG_END);
-
-    }
-
-    if (INS_IsBranch(ins)) {
-
-        INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)print_jmp_eflags,
-                        IARG_REG_VALUE, REG_RFLAGS,
-                        IARG_END);
-
     }
 
 }
