@@ -87,13 +87,6 @@ VOID print_call_args(UINT64* arg_0, UINT64* arg_1, UINT64* arg_2, UINT64* arg_3)
     //int i = 0;
     TRACE_FILE << "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX" << std::endl;
     TRACE_FILE << "ARG_0: " << arg_0 << std::endl;
-/*    if (arg_0 != 0) {
-        while (isprint(arg_0[i])) {
-            TRACE_FILE << arg_0[i];
-            i++;
-        }
-    }
-    TRACE_FILE << std::endl; */
     TRACE_FILE << "ARG_1: " << arg_1 << std::endl;
     TRACE_FILE << "ARG_2: " << arg_2 << std::endl;
     TRACE_FILE << "ARG_3: " << arg_3 << std::endl;
@@ -120,7 +113,33 @@ VOID Instruction(INS ins, VOID *v)
                     IARG_REG_VALUE, REG_INST_PTR,
                     IARG_END);
 
-    if (INS_IsRet(ins)) {
+    if (INS_IsMemoryRead(ins) and !INS_IsStackRead(ins)) {
+        UINT32 mem_op_count = INS_MemoryOperandCount(ins);
+        UINT32 read_len = INS_MemoryReadSize(ins);
+        for (UINT32 i = 0; i < mem_op_count; i++) {
+            if (INS_MemoryOperandIsRead(ins, i)) {
+                INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)print_mem_read,
+                                IARG_MEMORYOP_EA, i,                            // read address
+                                IARG_UINT32, read_len,                         // Length of the read
+                                IARG_END);
+            }
+        }
+    }
+
+    else if (INS_IsMemoryWrite(ins) and !INS_IsStackWrite(ins)) {
+        UINT32 mem_op_count = INS_MemoryOperandCount(ins);
+        UINT32 write_len = INS_MemoryWriteSize(ins);
+        for (UINT32 i = 0; i < mem_op_count; i++) {
+            if (INS_MemoryOperandIsWritten(ins, i)) {
+                INS_InsertCall(ins, IPOINT_AFTER, (AFUNPTR)print_mem_write,
+                                IARG_MEMORYOP_EA, i,                            // Write address
+                                IARG_UINT32, write_len,                         // Length of the write
+                                IARG_END);
+            }
+        }
+    }
+
+    else if (INS_IsRet(ins)) {
         INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)print_ret,
                         IARG_REG_VALUE, REG_EAX,                                // Value of the eax register
                         IARG_END);
@@ -138,38 +157,15 @@ VOID Instruction(INS ins, VOID *v)
     }
 
     else if (INS_IsBranch(ins)) {
-
-        INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)print_jmp_eflags,
-                        IARG_REG_VALUE, REG_RFLAGS,
-                        IARG_END);
-
-    }
-
-
-    else if (INS_IsMemoryWrite(ins) and !INS_IsStackWrite(ins)) {
-        UINT32 mem_op_count = INS_MemoryOperandCount(ins);
-        UINT32 write_len = INS_MemoryWriteSize(ins);
-        for (UINT32 i = 0; i < mem_op_count; i++) {
-            if (INS_MemoryOperandIsWritten(ins, i)) {
-                INS_InsertCall(ins, IPOINT_AFTER, (AFUNPTR)print_mem_write,
-                                IARG_MEMORYOP_EA, i,                            // Write address
-                                IARG_UINT32, write_len,                         // Length of the write
-                                IARG_END);
-            }
+        PREDICATE pred = INS_GetPredicate(ins);
+        if (pred == PREDICATE_ALWAYS_TRUE)
+            std::cout << INS_Disassemble(ins) << std::endl;
+        if (INS_BranchTakenPrefix(ins)) {
+            INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)print_jmp_eflags,
+                            IARG_REG_VALUE, REG_RFLAGS,
+                            IARG_END);
         }
-    }
 
-    else if (INS_IsMemoryRead(ins) and !INS_IsStackRead(ins)) {
-        UINT32 mem_op_count = INS_MemoryOperandCount(ins);
-        UINT32 read_len = INS_MemoryReadSize(ins);
-        for (UINT32 i = 0; i < mem_op_count; i++) {
-            if (INS_MemoryOperandIsRead(ins, i)) {
-                INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)print_mem_read,
-                                IARG_MEMORYOP_EA, i,                            // read address
-                                IARG_UINT32, read_len,                         // Length of the read
-                                IARG_END);
-            }
-        }
     }
 
 }
