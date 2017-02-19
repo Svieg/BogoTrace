@@ -48,7 +48,7 @@ VOID print_context_instruction(const CONTEXT* ctxt, std::string disassembled_ins
         }
         TRACE_FILE << REG_StringShort(REG_INST_PTR) << " : " << std::hex << PIN_GetContextReg(ctxt, REG_INST_PTR) << std::endl;
         TRACE_FILE << "==========================================================" << std::endl;
-        TRACE_FILE << ip << " : " <<disassembled_instr << std::endl;
+        TRACE_FILE << std::hex << "0x" << PIN_GetContextReg(ctxt, REG_INST_PTR) << " : " <<disassembled_instr << std::endl;
         TRACE_FILE << "==========================================================" << std::endl;
 }
 
