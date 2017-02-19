@@ -107,67 +107,68 @@ VOID print_jmp_eflags(UINT64 rflags) {
 VOID Instruction(INS ins, VOID *v)
 {
     // Insert a call to printip before every instruction, and pass it the IP
-    INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)print_context_instruction,
-                    IARG_CONST_CONTEXT,
-                    IARG_PTR, new string(INS_Disassemble(ins)),
-                    IARG_REG_VALUE, REG_INST_PTR,
-                    IARG_END);
+    IMG img = IMG_FindByAddress(INS_Address(ins));
 
-    if (INS_IsMemoryRead(ins) and !INS_IsStackRead(ins)) {
-        UINT32 mem_op_count = INS_MemoryOperandCount(ins);
-        UINT32 read_len = INS_MemoryReadSize(ins);
-        for (UINT32 i = 0; i < mem_op_count; i++) {
-            if (INS_MemoryOperandIsRead(ins, i)) {
-                INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)print_mem_read,
-                                IARG_MEMORYOP_EA, i,                            // read address
-                                IARG_UINT32, read_len,                         // Length of the read
-                                IARG_END);
-            }
-        }
-    }
-
-    else if (INS_IsMemoryWrite(ins) and !INS_IsStackWrite(ins)) {
-        UINT32 mem_op_count = INS_MemoryOperandCount(ins);
-        UINT32 write_len = INS_MemoryWriteSize(ins);
-        for (UINT32 i = 0; i < mem_op_count; i++) {
-            if (INS_MemoryOperandIsWritten(ins, i)) {
-                INS_InsertCall(ins, IPOINT_AFTER, (AFUNPTR)print_mem_write,
-                                IARG_MEMORYOP_EA, i,                            // Write address
-                                IARG_UINT32, write_len,                         // Length of the write
-                                IARG_END);
-            }
-        }
-    }
-
-    else if (INS_IsRet(ins)) {
-        INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)print_ret,
-                        IARG_REG_VALUE, REG_EAX,                                // Value of the eax register
-                        IARG_END);
-    }
-
-    else if (INS_IsCall(ins)) {
-
-        INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)print_call_args,
-                        IARG_FUNCARG_CALLSITE_VALUE, 0,
-                        IARG_FUNCARG_CALLSITE_VALUE, 1,
-                        IARG_FUNCARG_CALLSITE_VALUE, 2,
-                        IARG_FUNCARG_CALLSITE_VALUE, 3,
-                        IARG_END);
-
-    }
-
-    else if (INS_IsBranch(ins)) {
-        PREDICATE pred = INS_GetPredicate(ins);
-        if (pred == PREDICATE_ALWAYS_TRUE)
-            std::cout << INS_Disassemble(ins) << std::endl;
-        if (INS_BranchTakenPrefix(ins)) {
-            INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)print_jmp_eflags,
-                            IARG_REG_VALUE, REG_RFLAGS,
+    if (IMG_Valid(img)) {
+        if(IMG_IsMainExecutable(IMG_FindByAddress(INS_Address(ins)))) {
+            INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)print_context_instruction,
+                            IARG_CONST_CONTEXT,
+                            IARG_PTR, new string(INS_Disassemble(ins)),
+                            IARG_REG_VALUE, REG_INST_PTR,
                             IARG_END);
+
+            if (INS_IsMemoryRead(ins) and !INS_IsStackRead(ins)) {
+                UINT32 mem_op_count = INS_MemoryOperandCount(ins);
+                UINT32 read_len = INS_MemoryReadSize(ins);
+                for (UINT32 i = 0; i < mem_op_count; i++) {
+                    if (INS_MemoryOperandIsRead(ins, i)) {
+                        INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)print_mem_read,
+                                        IARG_MEMORYOP_EA, i,                            // read address
+                                        IARG_UINT32, read_len,                         // Length of the read
+                                        IARG_END);
+                    }
+                }
+            }
+
+            else if (INS_IsMemoryWrite(ins) and !INS_IsStackWrite(ins)) {
+                UINT32 mem_op_count = INS_MemoryOperandCount(ins);
+                UINT32 write_len = INS_MemoryWriteSize(ins);
+                for (UINT32 i = 0; i < mem_op_count; i++) {
+                    if (INS_MemoryOperandIsWritten(ins, i)) {
+                        INS_InsertCall(ins, IPOINT_AFTER, (AFUNPTR)print_mem_write,
+                                        IARG_MEMORYOP_EA, i,                            // Write address
+                                        IARG_UINT32, write_len,                         // Length of the write
+                                        IARG_END);
+                    }
+                }
+            }
+
+            else if (INS_IsRet(ins)) {
+                INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)print_ret,
+                                IARG_REG_VALUE, REG_EAX,                                // Value of the eax register
+                                IARG_END);
+            }
+
+            else if (INS_IsCall(ins)) {
+
+                INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)print_call_args,
+                                IARG_FUNCARG_CALLSITE_VALUE, 0,
+                                IARG_FUNCARG_CALLSITE_VALUE, 1,
+                                IARG_FUNCARG_CALLSITE_VALUE, 2,
+                                IARG_FUNCARG_CALLSITE_VALUE, 3,
+                                IARG_END);
+
+            }
+
+            else if (INS_IsBranch(ins)) {
+                if (INS_BranchTakenPrefix(ins)) {
+                    INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)print_jmp_eflags,
+                                    IARG_REG_VALUE, REG_EFLAGS,
+                                    IARG_END);
+                }
+            }
         }
-
     }
-
 }
 
 // This function is called when the application exits
